@@ -1,0 +1,169 @@
+---
+title: "DSA Homework 3"
+author: "Mohamat Eirban Ali"
+date: "September 22, 2019"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Load required libraries
+```{r message=FALSE, warning=FALSE}
+library('tidyverse')
+library('caret')
+library('mlbench')
+library('ggbiplot')
+library('MASS')
+library('ggplot2')
+library('grid')
+library('gridExtra')
+library('Rtsne')
+```
+Problem 1(a)
+```{r echo=FALSE}
+data(Glass)
+Glass <- Glass[!duplicated(Glass),]
+corMat <- cor(Glass[sapply(Glass, is.numeric)])
+```
+Firstly we loaded the dataset 'Glass', after which the duplicate was removed. Finally we created the correlation matrix required.
+
+Problem 1-a(ii)
+```{r}
+eigenset <- eigen(corMat)
+eig <- eigenset$vectors
+```
+Eigen values and vectors were found for dataset.
+
+Problem 1-a(iii)
+```{r}
+pca <- prcomp(Glass[sapply(Glass, is.numeric)], scale = TRUE, center = TRUE)
+PC <- data.frame(pca$rotation)
+```
+The dataset was applied through PCA with scaling and centering.
+
+Problem 1-a(iv)
+
+Eigen vectors and PCA gave similar result as principal component analysis; after all PCA are eigenvectors that show spread of variance of the data
+
+Problem 1-a(v)
+```{r}
+PC$PC1%*%PC$PC2
+```
+The very small value(close to zero) of the inner product between PC1 and PC2 shows they are orthogonal
+
+Problem 1-b(i)
+```{r echo=FALSE}
+ggbiplot(pca, obs.scale = 1, var.scale = 1,
+         groups = Glass$Type, ellipse = TRUE) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+```
+PCA biplot showing PC1 and PC2 with Glass 'Type' grouping but PC1 and PC2 only explained 50% of variance. Hence we may need more than 2 dimension if we are to reduce the dimension.
+```{r echo=FALSE}
+ggbiplot(pca, obs.scale = 1, var.scale = 1, choices = c(3,4),
+         groups = Glass$Type, ellipse = TRUE) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+```
+Plotting of PC3 and PC4 of our PCA. Now overall, we have about 80% of variance covered which might be good enough for dimension reduction but it mainly depends on the model's accuracy we obtain from this dimension reduction.
+
+Problem 1-b(ii)
+
+PC1 covers about 27.9 % and PC2 22.9% of the variance of the dataset. Of all the data attribute, the Magnesium contribute to the PCA2, the Barium, Aluminum and Sodium contributes largely to PCA1 while the rest of the data attribute is split in between.
+
+Problem 1-b(iii)
+
+While PCA dimension reduction of at least to 4 dimension will give a 80% variance coverage but as in case for forensic science where high accuracy is required, dimension reduction should be avoided unless necessary; if the model from the dimension reduction was able to give a high accuracy of classification then dimension reduction is a viable option for this data.
+
+Problem 1-c (i)
+```{r}
+preproc.param <- Glass %>% preProcess(method = c("center", "scale"))
+transformed <- preproc.param %>% predict(Glass)
+lda.model <- lda(Type~., data = transformed)
+predictions <- lda.model %>% predict(transformed)
+```
+Data was centered, scaled and transformed using predict. Then the LDA model is created.
+```{r}
+table(Original=Glass$Type,Predicted=predictions$class)
+mean(predictions$class==transformed$Type)
+```
+Confusion matrix of the model and the accuracy rate of 61.7% shown for the created LDA model.
+
+Problem 1-c (ii) 
+From LD1, we can observe it explains about 81% of the between group variance.Sodium,
+calcium, Magnesium and Barium have the most weight determining the LD1 vector.
+
+Problem 1-c (iii)
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+Glass.lda.values <- predict(lda.model)
+graphics.off()
+par(mar=c(1,1,1,1))
+ldahist(data = Glass.lda.values$x[,1], g=Glass$Type)
+ldahist(data = Glass.lda.values$x[,2], g=Glass$Type)
+```
+The plot of LD1 and LD2 shows that LD1 as expected, covers way more variance inbetween groups then LD2.
+
+Problem 2(a)
+```{r echo=FALSE}
+fbraw <- read.csv("C:\\Users\\irfan\\Documents\\DSA Homework 3\\FB-metrics.csv")
+fb <- fbraw[c(1,9:18)]
+```
+
+```{r echo=FALSE}
+fbpca <- prcomp(fb[sapply(fb, is.numeric)], scale = TRUE, center = TRUE)
+fbraw$Type <- factor(fbraw$Type)
+fbraw$Category <- factor(fbraw$Category)
+fbraw$Paid <- factor(fbraw$Paid)
+```
+The FB_metrics data was loaded, scaled and centered. A subset of the evaluation metric created. Then the PCA was applied to the evaluation set of our dataset.
+
+```{r echo=FALSE}
+df_out_r <- as.data.frame(fbpca$rotation)
+df_out_r$feature <- row.names(df_out_r)
+p<-ggplot(df_out_r,aes(x=PC1,y=PC2,label=feature,color=feature ))
+p<-p+geom_point()+ geom_text(size=3)
+p
+```
+Plot of the evaluation metrics to their contributing weights for PC1 AND PC2; we can determine the importance of the metrics to our PCA. This plot shows us the weight held by each feature in regards to PC1 and PC2.
+
+```{r echo=FALSE}
+ggbiplot(fbpca, obs.scale = 1, var.scale = 1,
+groups = fbraw$Category, ellipse = TRUE)
+ggbiplot(fbpca, obs.scale = 1, var.scale = 1,
+groups = fbraw$Paid, ellipse = TRUE)
+```
+The two plot above grouped based on the 'Category' and 'Paid' attribute, it shows that PCA might not be suitable for classification/dimension reduction for this data.(Also tried other groupings for similar result)
+PCA did not give a good separation group which makes it unsuitable for classfication problem.
+
+Problem 2(b)
+```{r echo=FALSE}
+set.seed(9)
+tsne_model_1 = Rtsne(as.matrix(fb), check_duplicates=TRUE)
+d_tsne_1 = as.data.frame(tsne_model_1$Y)
+```
+The tsne model has been created for the FB_metrics data(only the evaluation metrics)
+
+```{r echo=FALSE}
+ggplot(d_tsne_1, aes(x=V1, y=V2, color=fbraw$Page.total.likes)) +
+geom_point(size=0.9) +
+guides(colour=guide_legend(override.aes=list(size=6))) +
+xlab("") + ylab("") +
+ggtitle("t-SNE") +
+theme_light(base_size=20) +
+theme(axis.text.x=element_blank(), axis.text.y=element_blank()) +
+scale_color_gradient(low="blue", high="red")
+```
+The plot of tsne 2 dimensional model points with grouping of continuous data of 'total page likes'. There is discrenable pattern observeable. Shows a good separation of data.
+
+```{r echo=FALSE}
+ggplot(d_tsne_1, aes(x=V1, y=V2, color=fbraw$Type, size=fbraw$Paid)) +
+geom_point() +
+guides(colour=guide_legend(override.aes=list(size=6))) +
+xlab("") + ylab("") +
+ggtitle("t-SNE") +
+theme_light(base_size=20) +
+theme(axis.text.x=element_blank(), axis.text.y=element_blank()) +
+scale_colour_brewer(palette = "Set2")
+```
+The plot of tsne models with grouping of 'Type' of post and 'Paid' status. There is discrenable pattern here too showing for the Fb_Metrics data, tsne method would be better than PCA.
