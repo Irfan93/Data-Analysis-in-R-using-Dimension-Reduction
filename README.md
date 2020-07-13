@@ -1,1 +1,1 @@
-# Data-Analysis-in-R-using-Dimension-Redcution
+# Data-Analysis-in-R-using-Dimension-Reduction
